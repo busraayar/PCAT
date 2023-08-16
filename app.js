@@ -6,6 +6,7 @@ const fs = require('fs');
 const ejs = require('ejs');
 const path = require('path');
 const Photo = require('./models/Photo');
+const { METHODS } = require('http');
 
 const app = express();
 
@@ -29,11 +30,15 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(fileUpload());
-app.use(methodOverride('_method'));
+app.use(
+  methodOverride('_method', {
+    methods: ['GET', 'POST'],
+  })
+);
 
 //ROUTES
 app.get('/', async (req, res) => {
-  const photos = await Photo.find({});
+  const photos = await Photo.find({}).sort('-dateCreated');
   res.render('index', {
     photos,
   });
@@ -92,6 +97,15 @@ app.put('/photos/:id', async (req, res) => {
   photo.save();
 
   res.redirect(`/photos/${req.params.id}`);
+});
+
+app.delete('/photos/:id', async (req, res) => {
+  const photo = await Photo.findById({_id: req.params.id});
+  let deleteImage = __dirname + '/public' + photo.image;
+  fs.unlinkSync(deleteImage);
+  await Photo.findByIdAndRemove(req.params.id);
+  res.redirect('/');
+
 });
 
 let port = 2000;
